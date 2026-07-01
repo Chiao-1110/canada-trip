@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>加拿大旅遊記帳本</title>
+<style>
+  :root {
+    --red: #d52b1e;
+    --blue: #0b3d91;
+    --bg: #f5f6fa;
+    --card: #ffffff;
+    --text: #1f2430;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --green: #1a9e5c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-bottom: 60px;
+  }
+  header {
+    background: linear-gradient(135deg, var(--red), var(--blue));
+    color: #fff;
+    padding: 24px 16px 20px;
+    text-align: center;
+  }
+  header h1 { margin: 0 0 4px; font-size: 22px; }
+  header p { margin: 0; opacity: .9; font-size: 13px; }
+
+  .container { max-width: 720px; margin: 0 auto; padding: 16px; }
+
+  .card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    border: 1px solid var(--border);
+  }
+  .card h2 {
+    font-size: 15px;
+    margin: 0 0 12px;
+    color: var(--blue);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  #configWarning {
+    display: none;
+    background: #fff3cd;
+    border: 1px solid #ffe08a;
+    color: #7a5b00;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    line-height: 1.6;
+  }
+  #configWarning code {
+    background: #fff;
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; margin-top: 10px; }
+  label:first-child { margin-top: 0; }
+  input[type="text"], input[type="date"], input[type="number"], select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fafafa;
+  }
+  .currency-row { display: flex; gap: 8px; }
+  .currency-row .toggle { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .currency-row .toggle button {
+    border: none; background: #fafafa; padding: 0 14px; font-size: 13px; cursor: pointer; color: var(--muted);
+  }
+  .currency-row .toggle button.active { background: var(--blue); color: #fff; }
+  .currency-row input { flex: 1; }
+
+  .participants { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .participants label {
+    display: flex; align-items: center; gap: 6px;
+    border: 1px solid var(--border); border-radius: 20px;
+    padding: 6px 12px; font-size: 13px; color: var(--text);
+    margin: 0; cursor: pointer; background: #fafafa;
+  }
+  .participants input { width: auto; }
+
+  button.primary {
+    width: 100%;
+    margin-top: 16px;
+    background: var(--blue);
+    color: #fff;
+    border: none;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.primary:disabled { opacity: .6; cursor: default; }
+  button.link {
+    background: none; border: none; color: var(--muted); font-size: 12px; cursor: pointer; text-decoration: underline;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; }
+  td.amount { white-space: nowrap; text-align: right; }
+  td.del { text-align: right; }
+  td.del button { background: none; border: none; color: var(--red); font-size: 12px; cursor: pointer; }
+  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 20px 0; }
+
+  .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .summary-item {
+    background: #f9fafc; border-radius: 10px; padding: 10px 12px; border: 1px solid var(--border);
+  }
+  .summary-item .name { font-size: 13px; font-weight: 600; }
+  .summary-item .detail { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .summary-item .net { font-size: 15px; font-weight: 700; margin-top: 4px; }
+  .net.positive { color: var(--green); }
+  .net.negative { color: var(--red); }
+
+  .total-line { display: flex; justify-content: space-between; font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+
+  .settlement-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; border-radius: 10px; background: #f9fafc; border: 1px solid var(--border);
+    font-size: 14px; margin-bottom: 8px;
+  }
+  .settlement-item b { color: var(--blue); }
+  .settlement-item .amt { color: var(--red); font-weight: 700; }
+
+  .status { text-align: center; font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+  .error-box {
+    background: #fdeaea; border: 1px solid #f5b5b5; color: #a12626;
+    padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 12px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🍁 加拿大旅遊記帳本</h1>
+  <p>六人共用記帳・CAD ⇄ TWD 自動換算（1 CAD = 22.43 TWD）</p>
+</header>
+
+<div class="container">
+
+  <div id="configWarning">
+    尚未設定 Google Apps Script 網址。請先依照 <code>Code.gs</code> 檔案開頭的步驟部署，
+    再把部署網址填入本檔案 <code>&lt;script&gt;</code> 區塊中的 <code>APPS_SCRIPT_URL</code>。
+  </div>
+
+  <div id="errorBox" class="error-box" style="display:none;"></div>
+
+  <div class="card">
+    <h2>➕ 新增花費</h2>
+    <label>日期</label>
+    <input type="date" id="fDate">
+
+    <label>說明</label>
+    <input type="text" id="fDesc" placeholder="例如：晚餐、機場計程車">
+
+    <label>付款人</label>
+    <select id="fPayer"></select>
+
+    <label>幣別與金額</label>
+    <div class="currency-row">
+      <div class="toggle">
+        <button type="button" id="btnCAD" class="active">CAD</button>
+        <button type="button" id="btnTWD">TWD</button>
+      </div>
+      <input type="number" id="fAmount" placeholder="金額" min="0" step="0.01">
+    </div>
+
+    <label>參與分攤的人</label>
+    <div class="participants" id="fParticipants"></div>
+
+    <button class="primary" id="btnSubmit">新增這筆花費</button>
+    <div class="status" id="submitStatus"></div>
+  </div>
+
+  <div class="card">
+    <h2>📋 花費明細 <button class="link" id="btnRefresh" style="margin-left:auto;">重新整理</button></h2>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr><th>日期</th><th>說明</th><th>付款人</th><th>參與人</th><th>金額(TWD)</th><th></th></tr>
+        </thead>
+        <tbody id="expenseRows"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="expenseEmpty" style="display:none;">目前還沒有任何花費紀錄</div>
+  </div>
+
+  <div class="card">
+    <h2>💰 總覽</h2>
+    <div class="total-line"><span>總花費 (TWD)</span><span id="totalAmount">$0</span></div>
+    <div class="summary-grid" id="summaryGrid"></div>
+  </div>
+
+  <div class="card">
+    <h2>🔄 結算（最少轉帳次數）</h2>
+    <div id="settlementList"></div>
+    <div class="empty" id="settlementEmpty" style="display:none;">目前帳務已平衡，不需要轉帳</div>
+  </div>
+
+</div>
+
+<script>
+/* ============ 設定區：部署好 Apps Script 後，把網址貼在這裡 ============ */
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwWg04hH0OurGHXFHv4FoiIlqIj14GQ6ZFQBmRHVOVsfI17IvfSCQig7etp_cr4tKxecg/exec";
+const CAD_TO_TWD = 22.43;
+/* ===================================================================== */
+
+let state = { people: [], expenses: [] };
+let selectedCurrency = 'CAD';
+
+const els = {
+  configWarning: document.getElementById('configWarning'),
+  errorBox: document.getElementById('errorBox'),
+  fDate: document.getElementById('fDate'),
+  fDesc: document.getElementById('fDesc'),
+  fPayer: document.getElementById('fPayer'),
+  fAmount: document.getElementById('fAmount'),
+  fParticipants: document.getElementById('fParticipants'),
+  btnCAD: document.getElementById('btnCAD'),
+  btnTWD: document.getElementById('btnTWD'),
+  btnSubmit: document.getElementById('btnSubmit'),
+  submitStatus: document.getElementById('submitStatus'),
+  btnRefresh: document.getElementById('btnRefresh'),
+  expenseRows: document.getElementById('expenseRows'),
+  expenseEmpty: document.getElementById('expenseEmpty'),
+  totalAmount: document.getElementById('totalAmount'),
+  summaryGrid: document.getElementById('summaryGrid'),
+  settlementList: document.getElementById('settlementList'),
+  settlementEmpty: document.getElementById('settlementEmpty'),
+};
+
+function isConfigured() {
+  return APPS_SCRIPT_URL && APPS_SCRIPT_URL.indexOf('PASTE_YOUR') === -1;
+}
+
+function toTWD(currency, amount) {
+  const n = Number(amount) || 0;
+  return currency === 'CAD' ? n * CAD_TO_TWD : n;
+}
+
+function fmt(n) {
+  return '$' + Math.round(n).toLocaleString('zh-TW');
+}
+
+function showError(msg) {
+  els.errorBox.textContent = msg;
+  els.errorBox.style.display = msg ? 'block' : 'none';
+}
+
+/* ---------- API ---------- */
+async function fetchData() {
+  if (!isConfigured()) {
+    els.configWarning.style.display = 'block';
+    return;
+  }
+  try {
+    showError('');
+    const res = await fetch(APPS_SCRIPT_URL, { method: 'GET' });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    state.people = data.people || [];
+    state.expenses = data.expenses || [];
+    renderAll();
+  } catch (err) {
+    showError('讀取資料失敗，請檢查網路連線或 Apps Script 部署設定。（' + err.message + '）');
+  }
+}
+
+async function postAction(payload) {
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  state.people = data.people || [];
+  state.expenses = data.expenses || [];
+  renderAll();
+}
+
+/* ---------- Render ---------- */
+function renderAll() {
+  renderPayerOptions();
+  renderParticipantCheckboxes();
+  renderExpenseTable();
+  renderSummary();
+  renderSettlement();
+}
+
+function renderPayerOptions() {
+  els.fPayer.innerHTML = state.people.map(p => `<option value="${p}">${p}</option>`).join('');
+}
+
+function renderParticipantCheckboxes() {
+  els.fParticipants.innerHTML = state.people.map(p => `
+    <label><input type="checkbox" value="${p}" checked> ${p}</label>
+  `).join('');
+}
+
+function renderExpenseTable() {
+  if (!state.expenses.length) {
+    els.expenseRows.innerHTML = '';
+    els.expenseEmpty.style.display = 'block';
+    return;
+  }
+  els.expenseEmpty.style.display = 'none';
+  els.expenseRows.innerHTML = state.expenses.map(e => {
+    const twd = toTWD(e.currency, e.amount);
+    return `<tr>
+      <td>${e.date || ''}</td>
+      <td>${e.description || ''}</td>
+      <td>${e.payer || ''}</td>
+      <td>${(e.participants || []).join('、')}</td>
+      <td class="amount">${fmt(twd)}<br><span style="color:#9ca3af;font-size:11px;">${e.currency} ${e.amount}</span></td>
+      <td class="del"><button onclick="handleDelete('${e.id}')">刪除</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function computeBalances() {
+  const balances = {};
+  state.people.forEach(p => balances[p] = 0);
+  let total = 0;
+
+  state.expenses.forEach(e => {
+    const twd = toTWD(e.currency, e.amount);
+    total += twd;
+    if (e.payer && balances[e.payer] !== undefined) balances[e.payer] += twd;
+    const participants = (e.participants || []).filter(p => balances[p] !== undefined);
+    if (participants.length) {
+      const share = twd / participants.length;
+      participants.forEach(p => balances[p] -= share);
+    }
+  });
+
+  return { balances, total };
+}
+
+function renderSummary() {
+  const { balances, total } = computeBalances();
+  els.totalAmount.textContent = fmt(total);
+  els.summaryGrid.innerHTML = Object.keys(balances).map(name => {
+    const net = balances[name];
+    const cls = net >= 0.5 ? 'positive' : (net <= -0.5 ? 'negative' : '');
+    const label = net >= 0.5 ? '應收回' : (net <= -0.5 ? '應付出' : '已結清');
+    return `<div class="summary-item">
+      <div class="name">${name}</div>
+      <div class="detail">${label}</div>
+      <div class="net ${cls}">${fmt(Math.abs(net))}</div>
+    </div>`;
+  }).join('');
+}
+
+function simplifyDebts(balances) {
+  const creditors = [];
+  const debtors = [];
+  Object.keys(balances).forEach(name => {
+    const v = Math.round(balances[name] * 100) / 100;
+    if (v > 0.5) creditors.push({ name, amount: v });
+    else if (v < -0.5) debtors.push({ name, amount: -v });
+  });
+  creditors.sort((a, b) => b.amount - a.amount);
+  debtors.sort((a, b) => b.amount - a.amount);
+
+  const transactions = [];
+  let i = 0, j = 0;
+  while (i < debtors.length && j < creditors.length) {
+    const d = debtors[i], c = creditors[j];
+    const amount = Math.min(d.amount, c.amount);
+    if (amount > 0.5) {
+      transactions.push({ from: d.name, to: c.name, amount });
+    }
+    d.amount -= amount;
+    c.amount -= amount;
+    if (d.amount <= 0.5) i++;
+    if (c.amount <= 0.5) j++;
+  }
+  return transactions;
+}
+
+function renderSettlement() {
+  const { balances } = computeBalances();
+  const transactions = simplifyDebts(balances);
+  if (!transactions.length) {
+    els.settlementList.innerHTML = '';
+    els.settlementEmpty.style.display = 'block';
+    return;
+  }
+  els.settlementEmpty.style.display = 'none';
+  els.settlementList.innerHTML = transactions.map(t => `
+    <div class="settlement-item">
+      <span><b>${t.from}</b> → <b>${t.to}</b></span>
+      <span class="amt">${fmt(t.amount)}</span>
+    </div>
+  `).join('');
+}
+
+/* ---------- Events ---------- */
+els.btnCAD.addEventListener('click', () => {
+  selectedCurrency = 'CAD';
+  els.btnCAD.classList.add('active');
+  els.btnTWD.classList.remove('active');
+});
+els.btnTWD.addEventListener('click', () => {
+  selectedCurrency = 'TWD';
+  els.btnTWD.classList.add('active');
+  els.btnCAD.classList.remove('active');
+});
+
+els.btnRefresh.addEventListener('click', fetchData);
+
+els.btnSubmit.addEventListener('click', async () => {
+  const date = els.fDate.value || new Date().toISOString().slice(0, 10);
+  const description = els.fDesc.value.trim();
+  const payer = els.fPayer.value;
+  const amount = parseFloat(els.fAmount.value);
+  const participants = Array.from(els.fParticipants.querySelectorAll('input:checked')).map(i => i.value);
+
+  if (!description) return alert('請輸入花費說明');
+  if (!payer) return alert('請選擇付款人');
+  if (!amount || amount <= 0) return alert('請輸入正確的金額');
+  if (!participants.length) return alert('請至少勾選一位參與分攤的人');
+  if (!isConfigured()) return alert('尚未設定 Apps Script 網址，請參考頁面上方提示');
+
+  els.btnSubmit.disabled = true;
+  els.submitStatus.textContent = '送出中...';
+  try {
+    await postAction({
+      action: 'addExpense',
+      expense: { date, description, payer, currency: selectedCurrency, amount, participants }
+    });
+    els.fDesc.value = '';
+    els.fAmount.value = '';
+    els.submitStatus.textContent = '新增成功！';
+    setTimeout(() => els.submitStatus.textContent = '', 2000);
+  } catch (err) {
+    showError('新增花費失敗：' + err.message);
+  } finally {
+    els.btnSubmit.disabled = false;
+  }
+});
+
+async function handleDelete(id) {
+  if (!confirm('確定要刪除這筆花費嗎？')) return;
+  try {
+    await postAction({ action: 'deleteExpense', id });
+  } catch (err) {
+    showError('刪除失敗：' + err.message);
+  }
+}
+
+/* ---------- Init ---------- */
+els.fDate.value = new Date().toISOString().slice(0, 10);
+fetchData();
+</script>
+</body>
+</html>
