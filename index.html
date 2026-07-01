@@ -4,216 +4,323 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>加拿大旅遊記帳本</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --red: #d52b1e;
-    --blue: #0b3d91;
-    --bg: #f5f6fa;
-    --card: #ffffff;
-    --text: #1f2430;
-    --muted: #6b7280;
-    --border: #e5e7eb;
-    --green: #1a9e5c;
+    --paper:    #f3ede2;
+    --surface:  #fffdf8;
+    --ink:      #2b2620;
+    --muted:    #8d8172;
+    --line:     #e8ddca;
+    --maple:    #b5342a;
+    --maple-dk: #8f2a22;
+    --maple-sf: #f6dcd6;
+    --pine:     #2f6b57;
+    --pine-sf:  #dcebe4;
+    --gold:     #c98a2b;
+    --shadow:   0 10px 30px -12px rgba(74,48,30,.28);
+    --shadow-sm: 0 2px 10px -4px rgba(74,48,30,.20);
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    padding-bottom: 60px;
+    font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    background-image:
+      radial-gradient(1200px 500px at 100% -10%, rgba(181,52,42,.06), transparent 60%),
+      radial-gradient(900px 500px at -10% 10%, rgba(47,107,87,.06), transparent 55%);
+    padding-bottom: 56px;
+    line-height: 1.5;
   }
+  .num { font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+
+  /* ---------- Header ---------- */
   header {
-    background: linear-gradient(135deg, var(--red), var(--blue));
-    color: #fff;
-    padding: 24px 16px 20px;
+    position: relative;
+    background: linear-gradient(150deg, #2a1f18 0%, #3a2620 55%, #4a2620 100%);
+    color: #f7efe3;
+    padding: 30px 20px 64px;
     text-align: center;
+    overflow: hidden;
   }
-  header h1 { margin: 0 0 4px; font-size: 22px; }
-  header p { margin: 0; opacity: .9; font-size: 13px; }
+  header::after {
+    content: "🍁";
+    position: absolute;
+    font-size: 190px;
+    right: -34px; top: -46px;
+    opacity: .07;
+    transform: rotate(-12deg);
+    pointer-events: none;
+  }
+  header .kicker {
+    font-size: 11px; letter-spacing: .32em; text-transform: uppercase;
+    color: var(--gold); font-weight: 700; margin-bottom: 8px;
+  }
+  header h1 {
+    font-family: "Fraunces", "Noto Serif TC", serif;
+    font-weight: 600; font-size: 27px; margin: 0 0 12px;
+    letter-spacing: -.01em;
+  }
+  .rate-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.16);
+    color: #ecdfce;
+    padding: 6px 14px; border-radius: 999px; font-size: 12.5px;
+    backdrop-filter: blur(4px);
+  }
+  .rate-pill b { color: #fff; font-weight: 700; }
 
-  .container { max-width: 720px; margin: 0 auto; padding: 16px; }
+  /* ---------- Layout ---------- */
+  .container { max-width: 560px; margin: 0 auto; padding: 0 16px; }
 
-  .card {
-    background: var(--card);
-    border-radius: 14px;
-    padding: 18px;
-    margin-bottom: 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-    border: 1px solid var(--border);
-  }
-  .card h2 {
-    font-size: 15px;
-    margin: 0 0 12px;
-    color: var(--blue);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  #configWarning {
-    display: none;
-    background: #fff3cd;
-    border: 1px solid #ffe08a;
-    color: #7a5b00;
-    padding: 12px 14px;
-    border-radius: 10px;
-    font-size: 13px;
-    margin-bottom: 16px;
-    line-height: 1.6;
-  }
-  #configWarning code {
-    background: #fff;
-    padding: 1px 5px;
-    border-radius: 4px;
-  }
-
-  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; margin-top: 10px; }
-  label:first-child { margin-top: 0; }
-  input[type="text"], input[type="date"], input[type="number"], select {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    font-size: 14px;
-    background: #fafafa;
-  }
-  .currency-row { display: flex; gap: 8px; }
-  .currency-row .toggle { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-  .currency-row .toggle button {
-    border: none; background: #fafafa; padding: 0 14px; font-size: 13px; cursor: pointer; color: var(--muted);
-  }
-  .currency-row .toggle button.active { background: var(--blue); color: #fff; }
-  .currency-row input { flex: 1; }
-
-  .participants { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
-  .participants label {
-    display: flex; align-items: center; gap: 6px;
-    border: 1px solid var(--border); border-radius: 20px;
-    padding: 6px 12px; font-size: 13px; color: var(--text);
-    margin: 0; cursor: pointer; background: #fafafa;
-  }
-  .participants input { width: auto; }
-
-  button.primary {
-    width: 100%;
-    margin-top: 16px;
-    background: var(--blue);
+  /* hero total floats over the header */
+  .hero {
+    margin-top: -44px;
+    background: linear-gradient(160deg, var(--maple), var(--maple-dk));
     color: #fff;
-    border: none;
-    padding: 12px;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
+    border-radius: 20px;
+    padding: 22px 24px;
+    box-shadow: var(--shadow);
+    position: relative; overflow: hidden;
+    animation: rise .6s cubic-bezier(.2,.7,.3,1) both;
   }
-  button.primary:disabled { opacity: .6; cursor: default; }
-  button.link {
-    background: none; border: none; color: var(--muted); font-size: 12px; cursor: pointer; text-decoration: underline;
+  .hero::after {
+    content: ""; position: absolute; right: -40px; bottom: -60px;
+    width: 180px; height: 180px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,.16), transparent 70%);
+  }
+  .hero .hero-label { font-size: 13px; opacity: .9; letter-spacing: .04em; }
+  .hero .hero-num { font-size: 42px; font-weight: 700; margin-top: 2px; line-height: 1.05; }
+
+  section {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 20px;
+    margin-top: 16px;
+    box-shadow: var(--shadow-sm);
+    animation: rise .6s cubic-bezier(.2,.7,.3,1) both;
+  }
+  section:nth-of-type(1){animation-delay:.05s}
+  section:nth-of-type(2){animation-delay:.10s}
+  section:nth-of-type(3){animation-delay:.15s}
+  section:nth-of-type(4){animation-delay:.20s}
+
+  .sec-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .sec-head .bar { width: 4px; height: 18px; border-radius: 3px; background: var(--maple); }
+  .sec-head h2 { font-size: 17px; margin: 0; font-weight: 700; font-family: "Noto Serif TC", serif; }
+  .sec-head .spacer { flex: 1; }
+  .ghost-btn {
+    background: none; border: 1px solid var(--line); color: var(--muted);
+    font-size: 12.5px; cursor: pointer; padding: 5px 12px; border-radius: 999px;
+    font-family: inherit; transition: .18s;
+  }
+  .ghost-btn:hover { border-color: var(--maple); color: var(--maple); }
+
+  /* ---------- Form ---------- */
+  label.fld { display: block; font-size: 12.5px; color: var(--muted); margin: 14px 0 6px; font-weight: 500; }
+  label.fld:first-of-type { margin-top: 0; }
+  input[type="text"], input[type="date"], input[type="number"], select {
+    width: 100%; height: 48px; padding: 0 14px;
+    border: 1.5px solid var(--line); border-radius: 12px;
+    font-size: 16px; background: #fbf7ef; color: var(--ink);
+    font-family: inherit; -webkit-appearance: none; appearance: none;
+    text-align: left; transition: border-color .16s, box-shadow .16s, background .16s;
+  }
+  input:focus, select:focus {
+    outline: none; border-color: var(--maple); background: #fff;
+    box-shadow: 0 0 0 4px var(--maple-sf);
+  }
+  input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+  input[type="date"]::-webkit-calendar-picker-indicator { margin-left: auto; opacity: .5; }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%238d8172' d='M6 8 0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 16px center; padding-right: 38px;
   }
 
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
-  th { color: var(--muted); font-weight: 500; }
-  td.amount { white-space: nowrap; text-align: right; }
-  td.del { text-align: right; }
-  td.del button { background: none; border: none; color: var(--red); font-size: 12px; cursor: pointer; }
-  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 20px 0; }
-
-  .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .summary-item {
-    background: #f9fafc; border-radius: 10px; padding: 10px 12px; border: 1px solid var(--border);
+  .seg {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+    background: #efe6d6; border-radius: 12px; padding: 4px; margin-bottom: 10px;
   }
-  .summary-item .name { font-size: 13px; font-weight: 600; }
-  .summary-item .detail { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .summary-item .net { font-size: 15px; font-weight: 700; margin-top: 4px; }
-  .net.positive { color: var(--green); }
-  .net.negative { color: var(--red); }
-
-  .total-line { display: flex; justify-content: space-between; font-size: 15px; font-weight: 700; margin-bottom: 12px; }
-
-  .settlement-item {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 12px; border-radius: 10px; background: #f9fafc; border: 1px solid var(--border);
-    font-size: 14px; margin-bottom: 8px;
+  .seg button {
+    border: none; background: transparent; height: 40px; border-radius: 9px;
+    font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer;
+    font-family: inherit; transition: .18s;
   }
-  .settlement-item b { color: var(--blue); }
-  .settlement-item .amt { color: var(--red); font-weight: 700; }
+  .seg button.active { background: var(--surface); color: var(--maple); box-shadow: var(--shadow-sm); }
 
-  .status { text-align: center; font-size: 12px; color: var(--muted); margin: 8px 0 0; }
-  .error-box {
-    background: #fdeaea; border: 1px solid #f5b5b5; color: #a12626;
-    padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 12px;
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips label {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    border: 1.5px solid var(--line); border-radius: 999px;
+    padding: 8px 14px; font-size: 14px; background: #fbf7ef; color: var(--ink);
+    transition: .16s; user-select: none;
+  }
+  .chips label:has(input:checked) {
+    background: var(--maple); border-color: var(--maple); color: #fff;
+    box-shadow: 0 4px 12px -4px rgba(181,52,42,.5);
+  }
+  .chips label::before {
+    content: "＋"; font-size: 13px; opacity: .5; transition: .16s;
+  }
+  .chips label:has(input:checked)::before { content: "✓"; opacity: 1; }
+  .chips input { display: none; }
+
+  .primary {
+    width: 100%; margin-top: 20px; height: 52px;
+    background: linear-gradient(160deg, var(--maple), var(--maple-dk));
+    color: #fff; border: none; border-radius: 14px;
+    font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit;
+    box-shadow: 0 10px 22px -10px rgba(181,52,42,.65); transition: .16s;
+  }
+  .primary:hover { filter: brightness(1.05); }
+  .primary:active { transform: translateY(1px) scale(.995); }
+  .primary:disabled { opacity: .55; cursor: default; box-shadow: none; }
+  .status { text-align: center; font-size: 13px; color: var(--pine); margin-top: 10px; font-weight: 600; min-height: 18px; }
+
+  /* ---------- Expense list ---------- */
+  .exp {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 0; border-bottom: 1px solid var(--line);
+  }
+  .exp:last-child { border-bottom: none; }
+  .exp-body { flex: 1; min-width: 0; }
+  .exp-desc { font-weight: 600; font-size: 15px; }
+  .exp-meta { font-size: 12.5px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+  .exp-meta .who { color: var(--maple); font-weight: 500; }
+  .exp-right { text-align: right; white-space: nowrap; }
+  .exp-twd { font-size: 17px; font-weight: 700; }
+  .exp-orig { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+  .exp-del {
+    border: none; background: none; color: #c9beac; cursor: pointer;
+    font-size: 20px; line-height: 1; padding: 2px 2px 0; transition: .16s; margin-top: 1px;
+  }
+  .exp-del:hover { color: var(--maple); }
+  .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 26px 0; }
+
+  /* ---------- Summary ---------- */
+  .people { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .person {
+    border: 1px solid var(--line); border-radius: 14px; padding: 14px;
+    background: #fbf7ef; position: relative; overflow: hidden;
+  }
+  .person::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+    background: var(--muted);
+  }
+  .person.pos::before { background: var(--pine); }
+  .person.neg::before { background: var(--maple); }
+  .person-name { font-weight: 700; font-size: 15px; }
+  .person-spent { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .person-status { font-size: 11.5px; margin-top: 10px; font-weight: 600; letter-spacing: .02em; }
+  .person-net { font-size: 22px; font-weight: 700; margin-top: 1px; }
+  .pos .person-status, .pos .person-net { color: var(--pine); }
+  .neg .person-status, .neg .person-net { color: var(--maple); }
+  .zero .person-status, .zero .person-net { color: var(--muted); }
+
+  /* ---------- Settlement ---------- */
+  .pay {
+    display: flex; align-items: center; gap: 10px;
+    padding: 15px 16px; border-radius: 14px; margin-bottom: 10px;
+    background: linear-gradient(100deg, var(--pine-sf), #fbf7ef);
+    border: 1px solid var(--line);
+  }
+  .pay:last-child { margin-bottom: 0; }
+  .pay .from, .pay .to { font-weight: 700; font-size: 15px; }
+  .pay .arrow { color: var(--pine); font-size: 18px; font-weight: 700; }
+  .pay .spacer { flex: 1; }
+  .pay .amt { font-size: 18px; font-weight: 700; color: var(--maple); }
+  .settle-hint { font-size: 12.5px; color: var(--muted); margin: -4px 0 14px; }
+
+  /* ---------- Alerts ---------- */
+  .notice {
+    padding: 14px 16px; border-radius: 14px; font-size: 13.5px; line-height: 1.6; margin-top: 16px;
+  }
+  #configWarning { display: none; background: #fbf1d6; border: 1px solid #f0d99a; color: #7a5b12; }
+  #configWarning code { background: rgba(0,0,0,.05); padding: 1px 6px; border-radius: 5px; }
+  #errorBox { display: none; background: var(--maple-sf); border: 1px solid #eab7ad; color: var(--maple-dk); }
+
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  @media (max-width: 380px) {
+    .people { grid-template-columns: 1fr; }
+    .hero .hero-num { font-size: 36px; }
   }
 </style>
 </head>
 <body>
 
 <header>
+  <div class="kicker">Canada Trip · 2026</div>
   <h1>🍁 加拿大旅遊記帳本</h1>
-  <p>六人共用記帳・CAD ⇄ TWD 自動換算（1 CAD = 22.43 TWD）</p>
+  <span class="rate-pill">匯率 <b>1 CAD = 22.43 TWD</b> · 自動換算</span>
 </header>
 
 <div class="container">
 
-  <div id="configWarning">
+  <div class="hero">
+    <div class="hero-label">旅程總花費 (TWD)</div>
+    <div class="hero-num num" id="totalAmount">$0</div>
+  </div>
+
+  <div id="configWarning" class="notice">
     尚未設定 Google Apps Script 網址。請先依照 <code>Code.gs</code> 檔案開頭的步驟部署，
     再把部署網址填入本檔案 <code>&lt;script&gt;</code> 區塊中的 <code>APPS_SCRIPT_URL</code>。
   </div>
+  <div id="errorBox" class="notice"></div>
 
-  <div id="errorBox" class="error-box" style="display:none;"></div>
+  <section>
+    <div class="sec-head"><span class="bar"></span><h2>新增花費</h2></div>
 
-  <div class="card">
-    <h2>➕ 新增花費</h2>
-    <label>日期</label>
+    <label class="fld">日期</label>
     <input type="date" id="fDate">
 
-    <label>說明</label>
+    <label class="fld">花費說明</label>
     <input type="text" id="fDesc" placeholder="例如：晚餐、機場計程車">
 
-    <label>付款人</label>
+    <label class="fld">誰付的錢</label>
     <select id="fPayer"></select>
 
-    <label>幣別與金額</label>
-    <div class="currency-row">
-      <div class="toggle">
-        <button type="button" id="btnCAD" class="active">CAD</button>
-        <button type="button" id="btnTWD">TWD</button>
-      </div>
-      <input type="number" id="fAmount" placeholder="金額" min="0" step="0.01">
+    <label class="fld">幣別與金額</label>
+    <div class="seg">
+      <button type="button" id="btnCAD" class="active">🇨🇦 加幣 CAD</button>
+      <button type="button" id="btnTWD">🇹🇼 台幣 TWD</button>
     </div>
+    <input type="number" id="fAmount" placeholder="輸入金額" min="0" step="0.01" inputmode="decimal">
 
-    <label>參與分攤的人</label>
-    <div class="participants" id="fParticipants"></div>
+    <label class="fld">誰要一起分攤</label>
+    <div class="chips" id="fParticipants"></div>
 
-    <button class="primary" id="btnSubmit">新增這筆花費</button>
+    <button class="primary" id="btnSubmit">＋ 記下這筆花費</button>
     <div class="status" id="submitStatus"></div>
-  </div>
+  </section>
 
-  <div class="card">
-    <h2>📋 花費明細 <button class="link" id="btnRefresh" style="margin-left:auto;">重新整理</button></h2>
-    <div style="overflow-x:auto;">
-      <table>
-        <thead>
-          <tr><th>日期</th><th>說明</th><th>付款人</th><th>參與人</th><th>金額(TWD)</th><th></th></tr>
-        </thead>
-        <tbody id="expenseRows"></tbody>
-      </table>
+  <section>
+    <div class="sec-head">
+      <span class="bar"></span><h2>花費明細</h2>
+      <span class="spacer"></span>
+      <button class="ghost-btn" id="btnRefresh">↻ 重新整理</button>
     </div>
-    <div class="empty" id="expenseEmpty" style="display:none;">目前還沒有任何花費紀錄</div>
-  </div>
+    <div id="expenseRows"></div>
+    <div class="empty" id="expenseEmpty" style="display:none;">還沒有任何花費紀錄，從上方新增第一筆吧！</div>
+  </section>
 
-  <div class="card">
-    <h2>💰 總覽</h2>
-    <div class="total-line"><span>總花費 (TWD)</span><span id="totalAmount">$0</span></div>
-    <div class="summary-grid" id="summaryGrid"></div>
-  </div>
+  <section>
+    <div class="sec-head"><span class="bar"></span><h2>每人結餘</h2></div>
+    <div class="people" id="summaryGrid"></div>
+  </section>
 
-  <div class="card">
-    <h2>🔄 結算（最少轉帳次數）</h2>
+  <section>
+    <div class="sec-head"><span class="bar"></span><h2>結算轉帳</h2></div>
+    <div class="settle-hint">已幫你算出最少的轉帳方式</div>
     <div id="settlementList"></div>
-    <div class="empty" id="settlementEmpty" style="display:none;">目前帳務已平衡，不需要轉帳</div>
-  </div>
+    <div class="empty" id="settlementEmpty" style="display:none;">目前帳務已平衡，不需要轉帳 🎉</div>
+  </section>
 
 </div>
 
@@ -258,6 +365,10 @@ function toTWD(currency, amount) {
 
 function fmt(n) {
   return '$' + Math.round(n).toLocaleString('zh-TW');
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 }
 
 function showError(msg) {
@@ -307,12 +418,14 @@ function renderAll() {
 }
 
 function renderPayerOptions() {
-  els.fPayer.innerHTML = state.people.map(p => `<option value="${p}">${p}</option>`).join('');
+  const prev = els.fPayer.value;
+  els.fPayer.innerHTML = state.people.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+  if (state.people.includes(prev)) els.fPayer.value = prev;
 }
 
 function renderParticipantCheckboxes() {
   els.fParticipants.innerHTML = state.people.map(p => `
-    <label><input type="checkbox" value="${p}" checked> ${p}</label>
+    <label><input type="checkbox" value="${esc(p)}" checked> ${esc(p)}</label>
   `).join('');
 }
 
@@ -325,20 +438,25 @@ function renderExpenseTable() {
   els.expenseEmpty.style.display = 'none';
   els.expenseRows.innerHTML = state.expenses.map(e => {
     const twd = toTWD(e.currency, e.amount);
-    return `<tr>
-      <td>${e.date || ''}</td>
-      <td>${e.description || ''}</td>
-      <td>${e.payer || ''}</td>
-      <td>${(e.participants || []).join('、')}</td>
-      <td class="amount">${fmt(twd)}<br><span style="color:#9ca3af;font-size:11px;">${e.currency} ${e.amount}</span></td>
-      <td class="del"><button onclick="handleDelete('${e.id}')">刪除</button></td>
-    </tr>`;
+    const dateShort = (e.date || '').slice(5).replace('-', '/');
+    return `<div class="exp">
+      <div class="exp-body">
+        <div class="exp-desc">${esc(e.description)}</div>
+        <div class="exp-meta">${dateShort} · <span class="who">${esc(e.payer)}</span> 付 · 分攤：${(e.participants || []).map(esc).join('、')}</div>
+      </div>
+      <div class="exp-right">
+        <div class="exp-twd num">${fmt(twd)}</div>
+        <div class="exp-orig num">${esc(e.currency)} ${Number(e.amount).toLocaleString('zh-TW')}</div>
+      </div>
+      <button class="exp-del" title="刪除" onclick="handleDelete('${esc(e.id)}')">×</button>
+    </div>`;
   }).join('');
 }
 
 function computeBalances() {
   const balances = {};
-  state.people.forEach(p => balances[p] = 0);
+  const shares = {};
+  state.people.forEach(p => { balances[p] = 0; shares[p] = 0; });
   let total = 0;
 
   state.expenses.forEach(e => {
@@ -348,24 +466,25 @@ function computeBalances() {
     const participants = (e.participants || []).filter(p => balances[p] !== undefined);
     if (participants.length) {
       const share = twd / participants.length;
-      participants.forEach(p => balances[p] -= share);
+      participants.forEach(p => { balances[p] -= share; shares[p] += share; });
     }
   });
 
-  return { balances, total };
+  return { balances, shares, total };
 }
 
 function renderSummary() {
-  const { balances, total } = computeBalances();
+  const { balances, shares, total } = computeBalances();
   els.totalAmount.textContent = fmt(total);
   els.summaryGrid.innerHTML = Object.keys(balances).map(name => {
     const net = balances[name];
-    const cls = net >= 0.5 ? 'positive' : (net <= -0.5 ? 'negative' : '');
+    const cls = net >= 0.5 ? 'pos' : (net <= -0.5 ? 'neg' : 'zero');
     const label = net >= 0.5 ? '應收回' : (net <= -0.5 ? '應付出' : '已結清');
-    return `<div class="summary-item">
-      <div class="name">${name}</div>
-      <div class="detail">${label}</div>
-      <div class="net ${cls}">${fmt(Math.abs(net))}</div>
+    return `<div class="person ${cls}">
+      <div class="person-name">${esc(name)}</div>
+      <div class="person-spent">旅程花費 ${fmt(shares[name])}</div>
+      <div class="person-status">${label}</div>
+      <div class="person-net num">${fmt(Math.abs(net))}</div>
     </div>`;
   }).join('');
 }
@@ -407,9 +526,12 @@ function renderSettlement() {
   }
   els.settlementEmpty.style.display = 'none';
   els.settlementList.innerHTML = transactions.map(t => `
-    <div class="settlement-item">
-      <span><b>${t.from}</b> → <b>${t.to}</b></span>
-      <span class="amt">${fmt(t.amount)}</span>
+    <div class="pay">
+      <span class="from">${esc(t.from)}</span>
+      <span class="arrow">→</span>
+      <span class="to">${esc(t.to)}</span>
+      <span class="spacer"></span>
+      <span class="amt num">${fmt(t.amount)}</span>
     </div>
   `).join('');
 }
@@ -450,7 +572,7 @@ els.btnSubmit.addEventListener('click', async () => {
     });
     els.fDesc.value = '';
     els.fAmount.value = '';
-    els.submitStatus.textContent = '新增成功！';
+    els.submitStatus.textContent = '✓ 新增成功！';
     setTimeout(() => els.submitStatus.textContent = '', 2000);
   } catch (err) {
     showError('新增花費失敗：' + err.message);
