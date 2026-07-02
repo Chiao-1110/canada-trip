@@ -605,12 +605,22 @@ function setupDayNav() {
     };
   });
 
+  let lastActive = null;
   const setActive = day => {
+    day = String(day);
+    let activeBtn = null;
     els.dayNav.querySelectorAll('.dn').forEach(b => {
-      const on = b.dataset.day === String(day);
+      const on = b.dataset.day === day;
       b.classList.toggle('active', on);
-      if (on) b.scrollIntoView({ block: 'nearest', inline: 'center' });
+      if (on) activeBtn = b;
     });
+    if (activeBtn && day !== lastActive) {
+      lastActive = day;
+      const nav = els.dayNav;
+      const left = nav.scrollLeft + activeBtn.getBoundingClientRect().left
+        - nav.getBoundingClientRect().left - (nav.clientWidth - activeBtn.offsetWidth) / 2;
+      nav.scrollTo({ left, behavior: 'smooth' });
+    }
   };
 
   const cards = [...els.itineraryList.querySelectorAll('.day-card')];
