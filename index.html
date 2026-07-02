@@ -80,7 +80,7 @@
 
   /* hero total floats over the header */
   .hero {
-    margin-top: -44px;
+    margin-top: 16px;
     background: linear-gradient(160deg, var(--maple), var(--maple-dk));
     color: #fff;
     border-radius: 20px;
@@ -237,6 +237,82 @@
   .pay .amt { font-size: 18px; font-weight: 700; color: var(--maple); }
   .settle-hint { font-size: 12.5px; color: var(--muted); margin: -4px 0 14px; }
 
+  /* ---------- Tabs ---------- */
+  .tabs {
+    margin-top: -28px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 5px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 15px; padding: 5px; box-shadow: var(--shadow);
+    position: relative; z-index: 3;
+    animation: rise .6s cubic-bezier(.2,.7,.3,1) both;
+  }
+  .tab {
+    border: none; background: transparent; height: 44px; border-radius: 11px;
+    font-size: 15px; font-weight: 700; color: var(--muted); cursor: pointer;
+    font-family: inherit; transition: .18s;
+  }
+  .tab.active {
+    background: linear-gradient(160deg, var(--maple), var(--maple-dk));
+    color: #fff; box-shadow: 0 8px 18px -8px rgba(181,52,42,.6);
+  }
+
+  /* ---------- Itinerary ---------- */
+  .day-nav {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; gap: 7px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    padding: 12px 2px; margin: 0 -2px 4px;
+    background: var(--paper); border-bottom: 1px solid var(--line);
+    scrollbar-width: none;
+  }
+  .day-nav::-webkit-scrollbar { display: none; }
+  .day-nav .dn {
+    flex: none; min-width: 40px; padding: 7px 6px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    font: 600 13px/1 inherit; font-family: inherit; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .day-nav .dn small { font-size: 9px; font-weight: 600; opacity: .6; letter-spacing: .02em; }
+  .day-nav .dn:hover { border-color: var(--maple); }
+  .day-nav .dn.active { background: var(--maple); border-color: var(--maple); color: #fff; }
+  .day-nav .dn.active small { opacity: .85; }
+
+  .city-head { display: flex; align-items: center; gap: 10px; margin: 24px 2px 12px; }
+  #itineraryList > .city-head:first-child { margin-top: 18px; }
+  .city-head .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--maple); box-shadow: 0 0 0 4px var(--maple-sf); flex: none; }
+  .city-head h2 { font-size: 18px; margin: 0; font-weight: 700; font-family: "Noto Serif TC", serif; }
+  .city-head .days { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+  .day-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+    padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow-sm);
+    scroll-margin-top: 66px;
+  }
+  .day-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .day-badge {
+    background: var(--maple-sf); color: var(--maple-dk); font-weight: 700;
+    font-size: 12px; padding: 4px 10px; border-radius: 8px; white-space: nowrap;
+  }
+  .day-date { font-weight: 700; font-size: 15px; }
+  .day-date .wd { color: var(--muted); font-weight: 500; margin-left: 5px; font-size: 13px; }
+
+  .slot { display: flex; gap: 9px; font-size: 14px; padding: 4px 0; line-height: 1.5; }
+  .slot .slot-ic { width: 20px; text-align: center; flex: none; }
+  .slot .slot-tx { flex: 1; }
+
+  .day-foot { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+  .stay-row { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+  .stay-row .stay-name { flex: 1; min-width: 0; }
+  .badge { font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .badge.ok { background: var(--pine-sf); color: var(--pine); }
+  .badge.wait { background: #f7ecd4; color: var(--gold); }
+  .trans-row {
+    display: flex; gap: 8px; font-size: 12.5px; color: var(--pine);
+    background: var(--pine-sf); border-radius: 10px; padding: 8px 11px; line-height: 1.55;
+  }
+  .trans-row.warn { color: var(--maple-dk); background: var(--maple-sf); }
+  .trans-row .t-ic { flex: none; }
+
   /* ---------- Alerts ---------- */
   .notice {
     padding: 14px 16px; border-radius: 14px; font-size: 13.5px; line-height: 1.6; margin-top: 16px;
@@ -262,6 +338,13 @@
 </header>
 
 <div class="container">
+
+  <div class="tabs">
+    <button type="button" class="tab active" id="tabExpenses">📒 記帳</button>
+    <button type="button" class="tab" id="tabItinerary">🗺️ 行程</button>
+  </div>
+
+  <div id="viewExpenses">
 
   <div class="hero">
     <div class="hero-label">旅程總花費 (TWD)</div>
@@ -322,6 +405,14 @@
     <div class="empty" id="settlementEmpty" style="display:none;">目前帳務已平衡，不需要轉帳 🎉</div>
   </section>
 
+  </div><!-- /viewExpenses -->
+
+  <div id="viewItinerary" style="display:none;">
+    <div id="dayNav" class="day-nav"></div>
+    <div id="itineraryList"></div>
+    <div class="empty" id="itineraryEmpty" style="display:none;">行程尚未建立，請到 Google Sheet 的 Itinerary 分頁填寫。</div>
+  </div>
+
 </div>
 
 <script>
@@ -330,10 +421,17 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwWg04hH0OurGHX
 const CAD_TO_TWD = 22.43;
 /* ===================================================================== */
 
-let state = { people: [], expenses: [] };
+let state = { people: [], expenses: [], itinerary: [] };
 let selectedCurrency = 'CAD';
 
 const els = {
+  tabExpenses: document.getElementById('tabExpenses'),
+  tabItinerary: document.getElementById('tabItinerary'),
+  viewExpenses: document.getElementById('viewExpenses'),
+  viewItinerary: document.getElementById('viewItinerary'),
+  dayNav: document.getElementById('dayNav'),
+  itineraryList: document.getElementById('itineraryList'),
+  itineraryEmpty: document.getElementById('itineraryEmpty'),
   configWarning: document.getElementById('configWarning'),
   errorBox: document.getElementById('errorBox'),
   fDate: document.getElementById('fDate'),
@@ -389,6 +487,7 @@ async function fetchData() {
     if (data.error) throw new Error(data.error);
     state.people = data.people || [];
     state.expenses = data.expenses || [];
+    state.itinerary = data.itinerary || [];
     renderAll();
   } catch (err) {
     showError('讀取資料失敗，請檢查網路連線或 Apps Script 部署設定。（' + err.message + '）');
@@ -415,6 +514,124 @@ function renderAll() {
   renderExpenseTable();
   renderSummary();
   renderSettlement();
+  renderItinerary();
+}
+
+function isEmptySlot(v) {
+  const s = String(v == null ? '' : v).trim();
+  return !s || s === '✗' || s === '✘' || s === '—' || s === '-';
+}
+
+function fmtItinDate(raw, weekday) {
+  const dt = new Date(raw);
+  if (!isNaN(dt.getTime())) {
+    const wd = dt.toLocaleDateString('en-US', { weekday: 'short' });
+    return esc(`${wd}. ${dt.getFullYear()}/${dt.getMonth() + 1}/${dt.getDate()}`);
+  }
+  return `${esc(raw)}<span class="wd">${esc(weekday)}</span>`;
+}
+
+function dayCardHTML(d) {
+  const slots = [['🌅', d.morning], ['☀️', d.afternoon], ['🌙', d.evening]]
+    .filter(s => !isEmptySlot(s[1]))
+    .map(s => `<div class="slot"><span class="slot-ic">${s[0]}</span><span class="slot-tx">${esc(s[1])}</span></div>`)
+    .join('');
+
+  let foot = '';
+  const stay = String(d.stay == null ? '' : d.stay).trim();
+  const booked = String(d.booked == null ? '' : d.booked).trim();
+  if (!isEmptySlot(stay) || (!isEmptySlot(booked))) {
+    let badge = '';
+    if (booked.indexOf('已') !== -1) badge = '<span class="badge ok">已訂</span>';
+    else if (booked.indexOf('待') !== -1) badge = '<span class="badge wait">待訂</span>';
+    foot += `<div class="stay-row"><span>🏨</span><span class="stay-name">${esc(isEmptySlot(stay) ? '—' : stay)}</span>${badge}</div>`;
+  }
+  const trans = String(d.transport == null ? '' : d.transport).trim();
+  if (trans) {
+    const warn = trans.indexOf('⚠') !== -1 ? ' warn' : '';
+    foot += `<div class="trans-row${warn}"><span class="t-ic">✈</span><span>${esc(trans)}</span></div>`;
+  }
+  if (foot) foot = `<div class="day-foot">${foot}</div>`;
+
+  return `<div class="day-card" id="day-${esc(String(d.day))}">
+    <div class="day-top">
+      <span class="day-badge">Day ${esc(String(d.day))}</span>
+      <span class="day-date">${fmtItinDate(d.date, d.weekday)}</span>
+    </div>
+    ${slots}
+    ${foot}
+  </div>`;
+}
+
+function renderItinerary() {
+  const list = state.itinerary || [];
+  if (!list.length) {
+    els.dayNav.innerHTML = '';
+    els.itineraryList.innerHTML = '';
+    els.itineraryEmpty.style.display = 'block';
+    return;
+  }
+  els.itineraryEmpty.style.display = 'none';
+
+  els.dayNav.innerHTML = list.map(d => {
+    const day = esc(String(d.day));
+    return `<button type="button" class="dn" data-day="${day}"><small>DAY</small>${day}</button>`;
+  }).join('');
+
+  const groups = [];
+  list.forEach(d => {
+    const last = groups[groups.length - 1];
+    if (last && last.city === d.city) last.days.push(d);
+    else groups.push({ city: d.city, days: [d] });
+  });
+
+  els.itineraryList.innerHTML = groups.map(g => {
+    const first = g.days[0], last = g.days[g.days.length - 1];
+    const range = g.days.length > 1 ? `Day ${first.day}–${last.day}` : `Day ${first.day}`;
+    const head = `<div class="city-head"><span class="dot"></span><h2>${esc(g.city || '—')}</h2><span class="days">${range}</span></div>`;
+    return head + g.days.map(dayCardHTML).join('');
+  }).join('');
+
+  setupDayNav();
+}
+
+let onDayScroll = null;
+let updateDayNav = null;
+function setupDayNav() {
+  els.dayNav.querySelectorAll('.dn').forEach(btn => {
+    btn.onclick = () => {
+      const card = document.getElementById('day-' + btn.dataset.day);
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+  });
+
+  const setActive = day => {
+    els.dayNav.querySelectorAll('.dn').forEach(b => {
+      const on = b.dataset.day === String(day);
+      b.classList.toggle('active', on);
+      if (on) b.scrollIntoView({ block: 'nearest', inline: 'center' });
+    });
+  };
+
+  const cards = [...els.itineraryList.querySelectorAll('.day-card')];
+  const update = () => {
+    let current = cards[0];
+    for (const c of cards) {
+      if (c.getBoundingClientRect().top <= 80) current = c; else break;
+    }
+    if (current) setActive(current.id.replace('day-', ''));
+  };
+
+  if (onDayScroll) window.removeEventListener('scroll', onDayScroll);
+  let ticking = false;
+  onDayScroll = () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => { ticking = false; update(); });
+  };
+  window.addEventListener('scroll', onDayScroll, { passive: true });
+  updateDayNav = update;
+  update();
 }
 
 function renderPayerOptions() {
@@ -537,6 +754,18 @@ function renderSettlement() {
 }
 
 /* ---------- Events ---------- */
+function switchTab(tab) {
+  const exp = tab === 'expenses';
+  els.viewExpenses.style.display = exp ? '' : 'none';
+  els.viewItinerary.style.display = exp ? 'none' : '';
+  els.tabExpenses.classList.toggle('active', exp);
+  els.tabItinerary.classList.toggle('active', !exp);
+  window.scrollTo(0, 0);
+  if (!exp && updateDayNav) updateDayNav();
+}
+els.tabExpenses.addEventListener('click', () => switchTab('expenses'));
+els.tabItinerary.addEventListener('click', () => switchTab('itinerary'));
+
 els.btnCAD.addEventListener('click', () => {
   selectedCurrency = 'CAD';
   els.btnCAD.classList.add('active');
