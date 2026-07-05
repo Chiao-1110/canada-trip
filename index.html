@@ -299,6 +299,11 @@
   .slot { display: flex; gap: 9px; font-size: 14px; padding: 4px 0; line-height: 1.5; }
   .slot .slot-ic { width: 20px; text-align: center; flex: none; }
   .slot .slot-tx { flex: 1; }
+  .slot-block { align-items: flex-start; }
+  .slot-body { flex: 1; }
+  .slot-label { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
+  .slot-items { margin: 0; padding-left: 16px; }
+  .slot-items li { font-size: 14px; line-height: 1.6; padding: 1px 0; }
 
   .day-foot { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
   .stay-row { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
@@ -532,9 +537,16 @@ function fmtItinDate(raw, weekday) {
 }
 
 function dayCardHTML(d) {
-  const slots = [['🌅', d.morning], ['☀️', d.afternoon], ['🌙', d.evening]]
-    .filter(s => !isEmptySlot(s[1]))
-    .map(s => `<div class="slot"><span class="slot-ic">${s[0]}</span><span class="slot-tx">${esc(s[1])}</span></div>`)
+  const slots = [['🌅', '上午', d.morning], ['☀️', '下午', d.afternoon], ['🌙', '晚上', d.evening]]
+    .filter(s => !isEmptySlot(s[2]))
+    .map(s => {
+      const items = String(s[2]).split('、').map(x => x.trim()).filter(Boolean);
+      if (items.length > 1) {
+        const lis = items.map(it => `<li>${esc(it)}</li>`).join('');
+        return `<div class="slot slot-block"><span class="slot-ic">${s[0]}</span><div class="slot-body"><div class="slot-label">${s[1]}</div><ul class="slot-items">${lis}</ul></div></div>`;
+      }
+      return `<div class="slot"><span class="slot-ic">${s[0]}</span><span class="slot-tx">${esc(items[0] || s[2])}</span></div>`;
+    })
     .join('');
 
   let foot = '';
