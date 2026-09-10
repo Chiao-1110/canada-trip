@@ -296,6 +296,34 @@
   .day-date { font-weight: 700; font-size: 15px; }
   .day-date .wd { color: var(--muted); font-weight: 500; margin-left: 5px; font-size: 13px; }
 
+  .edit-btn {
+    margin-left: auto; flex: none; border: 1px solid var(--line); background: var(--surface);
+    color: var(--muted); font-size: 12px; font-weight: 600; padding: 4px 10px;
+    border-radius: 8px; cursor: pointer; -webkit-appearance: none;
+  }
+  .edit-btn:hover { color: var(--maple-dk); border-color: var(--maple); }
+
+  .day-edit .ie-label {
+    display: block; font-size: 12px; color: var(--muted); font-weight: 600;
+    margin: 10px 0 4px;
+  }
+  .day-edit .ie-in {
+    display: block; width: 100%; box-sizing: border-box; font-size: 16px;
+    font-family: inherit; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; line-height: 1.5;
+  }
+  .day-edit textarea.ie-in { resize: vertical; }
+  .day-edit .ie-in:focus { outline: none; border-color: var(--maple); }
+  .ie-actions { display: flex; gap: 8px; margin-top: 14px; }
+  .ie-actions button {
+    flex: 1; font-size: 14px; font-weight: 700; padding: 9px 0;
+    border-radius: 10px; cursor: pointer; -webkit-appearance: none; border: 1px solid transparent;
+  }
+  .it-cancel { background: var(--surface); border-color: var(--line); color: var(--muted); }
+  .it-save { background: var(--maple); color: #fff; }
+  .ie-actions button:disabled { opacity: .55; cursor: default; }
+  .ie-status { font-size: 12.5px; color: var(--muted); margin-top: 8px; min-height: 1em; }
+
   .slot { display: flex; gap: 9px; font-size: 14px; padding: 4px 0; line-height: 1.5; }
   .slot .slot-ic { width: 20px; text-align: center; flex: none; }
   .slot .slot-tx { flex: 1; }
@@ -518,6 +546,7 @@ async function postAction(payload) {
   if (data.error) throw new Error(data.error);
   state.people = data.people || [];
   state.expenses = data.expenses || [];
+  state.itinerary = data.itinerary || state.itinerary;
   renderAll();
 }
 
@@ -549,7 +578,7 @@ function dayCardHTML(d) {
   const slots = [['🌅', '上午', d.morning], ['☀️', '下午', d.afternoon], ['🌙', '晚上', d.evening]]
     .filter(s => !isEmptySlot(s[2]))
     .map(s => {
-      const items = String(s[2]).split('、').map(x => x.trim()).filter(Boolean);
+      const items = String(s[2]).split(/\r?\n|、/).map(x => x.trim()).filter(Boolean);
       if (items.length > 1) {
         const lis = items.map(it => `<li>${esc(it)}</li>`).join('');
         return `<div class="slot slot-block"><span class="slot-ic">${s[0]}</span><div class="slot-body"><div class="slot-label">${s[1]}</div><ul class="slot-items">${lis}</ul></div></div>`;
@@ -588,10 +617,77 @@ function dayCardHTML(d) {
     <div class="day-top">
       <span class="day-badge">Day ${esc(String(d.day))}</span>
       <span class="day-date">${fmtItinDate(d.date, d.weekday)}</span>
+      <button type="button" class="edit-btn" data-day="${esc(String(d.day))}">✏️ 編輯</button>
     </div>
     ${slots}
     ${foot}
   </div>`;
+}
+
+let editingDay = null;
+
+function itVal(v) { return esc(String(v == null ? '' : v)); }
+
+function dayEditHTML(d) {
+  const day = esc(String(d.day));
+  const bk = String(d.booked == null ? '' : d.booked);
+  const bkSel = bk.indexOf('已') !== -1 ? 'ok' : (bk.indexOf('待') !== -1 ? 'wait' : '');
+  return `<div class="day-card day-edit" id="day-${day}">
+    <div class="day-top">
+      <span class="day-badge">Day ${day}</span>
+      <span class="day-date">${fmtItinDate(d.date, d.weekday)}</span>
+    </div>
+    <label class="ie-label">🌅 上午</label>
+    <textarea class="ie-in" data-f="morning" rows="2">${itVal(d.morning)}</textarea>
+    <label class="ie-label">☀️ 下午</label>
+    <textarea class="ie-in" data-f="afternoon" rows="2">${itVal(d.afternoon)}</textarea>
+    <label class="ie-label">🌙 晚上</label>
+    <textarea class="ie-in" data-f="evening" rows="2">${itVal(d.evening)}</textarea>
+    <label class="ie-label">🏨 住宿</label>
+    <input class="ie-in" data-f="stay" type="text" value="${itVal(d.stay)}">
+    <label class="ie-label">住宿狀態</label>
+    <select class="ie-in" data-f="booked">
+      <option value=""${bkSel === '' ? ' selected' : ''}>未定</option>
+      <option value="已訂"${bkSel === 'ok' ? ' selected' : ''}>已訂</option>
+      <option value="待訂"${bkSel === 'wait' ? ' selected' : ''}>待訂</option>
+    </select>
+    <label class="ie-label">✈️ 交通（多筆用換行）</label>
+    <textarea class="ie-in" data-f="transport" rows="3">${itVal(d.transport)}</textarea>
+    <label class="ie-label">📝 備註</label>
+    <textarea class="ie-in" data-f="note" rows="2">${itVal(d.note)}</textarea>
+    <div class="ie-actions">
+      <button type="button" class="it-cancel" data-day="${day}">取消</button>
+      <button type="button" class="it-save" data-day="${day}">儲存</button>
+    </div>
+    <div class="ie-status" id="ie-status-${day}"></div>
+  </div>`;
+}
+
+function setupDayEdit() {
+  els.itineraryList.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.onclick = () => { editingDay = btn.dataset.day; renderItinerary(); };
+  });
+  els.itineraryList.querySelectorAll('.it-cancel').forEach(btn => {
+    btn.onclick = () => { editingDay = null; renderItinerary(); };
+  });
+  els.itineraryList.querySelectorAll('.it-save').forEach(btn => {
+    btn.onclick = async () => {
+      const card = btn.closest('.day-edit');
+      const fields = {};
+      card.querySelectorAll('.ie-in').forEach(el => { fields[el.dataset.f] = el.value; });
+      const status = card.querySelector('.ie-status');
+      card.querySelectorAll('button').forEach(b => b.disabled = true);
+      if (status) status.textContent = '儲存中…';
+      try {
+        await postAction({ action: 'updateItineraryDay', day: btn.dataset.day, fields });
+        editingDay = null;
+        renderItinerary();
+      } catch (err) {
+        card.querySelectorAll('button').forEach(b => b.disabled = false);
+        if (status) status.textContent = '儲存失敗：' + err.message;
+      }
+    };
+  });
 }
 
 function renderItinerary() {
@@ -620,10 +716,11 @@ function renderItinerary() {
     const first = g.days[0], last = g.days[g.days.length - 1];
     const range = g.days.length > 1 ? `Day ${first.day}–${last.day}` : `Day ${first.day}`;
     const head = `<div class="city-head"><span class="dot"></span><h2>${esc(g.city || '—')}</h2><span class="days">${range}</span></div>`;
-    return head + g.days.map(dayCardHTML).join('');
+    return head + g.days.map(d => String(d.day) === String(editingDay) ? dayEditHTML(d) : dayCardHTML(d)).join('');
   }).join('');
 
   setupDayNav();
+  setupDayEdit();
 }
 
 let onDayScroll = null;
