@@ -355,6 +355,20 @@
   .note-row .n-ic { flex: none; }
   .note-row .note-text { min-width: 0; white-space: pre-wrap; }
 
+  /* ---------- Analysis ---------- */
+  .an-h { font-size: 15px; font-weight: 700; margin: 0 0 12px; }
+  .an-row { margin-bottom: 12px; }
+  .an-row:last-child { margin-bottom: 0; }
+  .an-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+  .an-name { font-size: 13.5px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 7px; }
+  .an-dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .an-val { font-size: 13.5px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+  .an-pct { font-size: 12px; font-weight: 600; color: var(--muted); margin-left: 2px; }
+  .an-bar { height: 9px; border-radius: 999px; background: var(--paper); overflow: hidden; }
+  .an-bar > span { display: block; height: 100%; border-radius: 999px; min-width: 2px; }
+  .an-tips { margin: 0; padding-left: 20px; }
+  .an-tips li { font-size: 13.5px; line-height: 1.65; color: var(--ink); padding: 2px 0; }
+
   /* ---------- Alerts ---------- */
   .notice {
     padding: 14px 16px; border-radius: 14px; font-size: 13.5px; line-height: 1.6; margin-top: 16px;
@@ -376,7 +390,7 @@
 <header>
   <div class="kicker">Canada Trip · 2026</div>
   <h1>🍁 2026/09 加拿大之旅</h1>
-  <span class="rate-pill">匯率 <b>1 CAD = 22.43 TWD</b> · 自動換算</span>
+  <span class="rate-pill">匯率 <b>各日自動換算</b> · 預設 1 CAD = 22.43 TWD</span>
 </header>
 
 <div class="container">
@@ -384,6 +398,7 @@
   <div class="tabs">
     <button type="button" class="tab active" id="tabExpenses">📒 記帳</button>
     <button type="button" class="tab" id="tabItinerary">🗺️ 行程</button>
+    <button type="button" class="tab" id="tabAnalysis">📊 分析</button>
   </div>
 
   <div id="viewExpenses">
@@ -455,22 +470,31 @@
     <div class="empty" id="itineraryEmpty" style="display:none;">行程尚未建立，請到 Google Sheet 的 Itinerary 分頁填寫。</div>
   </div>
 
+  <div id="viewAnalysis" style="display:none;">
+    <div id="analysisContent"></div>
+    <div class="empty" id="analysisEmpty" style="display:none;">還沒有花費資料，先到「記帳」新增幾筆吧。</div>
+  </div>
+
 </div>
 
 <script>
 /* ============ 設定區：部署好 Apps Script 後，把網址貼在這裡 ============ */
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwWg04hH0OurGHXFHv4FoiIlqIj14GQ6ZFQBmRHVOVsfI17IvfSCQig7etp_cr4tKxecg/exec";
-const CAD_TO_TWD = 22.43;
+const CAD_TO_TWD = 22.43; // 預設匯率：找不到當日匯率時使用
 /* ===================================================================== */
 
-let state = { people: [], expenses: [], itinerary: [] };
+let state = { people: [], expenses: [], itinerary: [], rates: {} };
 let selectedCurrency = 'CAD';
 
 const els = {
   tabExpenses: document.getElementById('tabExpenses'),
   tabItinerary: document.getElementById('tabItinerary'),
+  tabAnalysis: document.getElementById('tabAnalysis'),
   viewExpenses: document.getElementById('viewExpenses'),
   viewItinerary: document.getElementById('viewItinerary'),
+  viewAnalysis: document.getElementById('viewAnalysis'),
+  analysisContent: document.getElementById('analysisContent'),
+  analysisEmpty: document.getElementById('analysisEmpty'),
   dayNav: document.getElementById('dayNav'),
   itineraryList: document.getElementById('itineraryList'),
   itineraryEmpty: document.getElementById('itineraryEmpty'),
@@ -498,9 +522,16 @@ function isConfigured() {
   return APPS_SCRIPT_URL && APPS_SCRIPT_URL.indexOf('PASTE_YOUR') === -1;
 }
 
-function toTWD(currency, amount) {
+// 依日期取當日匯率；該日期在 Rates 表中沒有匯率，就用預設 22.43
+function rateFor(date) {
+  const r = state.rates && state.rates[date];
+  const n = Number(r);
+  return (r != null && !isNaN(n) && n > 0) ? n : CAD_TO_TWD;
+}
+
+function toTWD(currency, amount, date) {
   const n = Number(amount) || 0;
-  return currency === 'CAD' ? n * CAD_TO_TWD : n;
+  return currency === 'CAD' ? n * rateFor(date) : n;
 }
 
 function fmt(n) {
@@ -530,6 +561,7 @@ async function fetchData() {
     state.people = data.people || [];
     state.expenses = data.expenses || [];
     state.itinerary = data.itinerary || [];
+    state.rates = data.rates || {};
     renderAll();
   } catch (err) {
     showError('讀取資料失敗，請檢查網路連線或 Apps Script 部署設定。（' + err.message + '）');
@@ -547,6 +579,7 @@ async function postAction(payload) {
   state.people = data.people || [];
   state.expenses = data.expenses || [];
   state.itinerary = data.itinerary || state.itinerary;
+  state.rates = data.rates || state.rates;
   renderAll();
 }
 
@@ -558,6 +591,7 @@ function renderAll() {
   renderSummary();
   renderSettlement();
   renderItinerary();
+  renderAnalysis();
 }
 
 function isEmptySlot(v) {
@@ -792,8 +826,9 @@ function renderExpenseTable() {
   }
   els.expenseEmpty.style.display = 'none';
   els.expenseRows.innerHTML = state.expenses.map(e => {
-    const twd = toTWD(e.currency, e.amount);
+    const twd = toTWD(e.currency, e.amount, e.date);
     const dateShort = (e.date || '').slice(5).replace('-', '/');
+    const rateNote = e.currency === 'CAD' ? ` @${rateFor(e.date)}` : '';
     return `<div class="exp">
       <div class="exp-body">
         <div class="exp-desc">${esc(e.description)}</div>
@@ -801,7 +836,7 @@ function renderExpenseTable() {
       </div>
       <div class="exp-right">
         <div class="exp-twd num">${fmt(twd)}</div>
-        <div class="exp-orig num">${esc(e.currency)} ${Number(e.amount).toLocaleString('zh-TW')}</div>
+        <div class="exp-orig num">${esc(e.currency)} ${Number(e.amount).toLocaleString('zh-TW')}${esc(rateNote)}</div>
       </div>
       <button class="exp-del" title="刪除" onclick="handleDelete('${esc(e.id)}')">×</button>
     </div>`;
@@ -815,7 +850,7 @@ function computeBalances() {
   let total = 0;
 
   state.expenses.forEach(e => {
-    const twd = toTWD(e.currency, e.amount);
+    const twd = toTWD(e.currency, e.amount, e.date);
     total += twd;
     if (e.payer && balances[e.payer] !== undefined) balances[e.payer] += twd;
     const participants = (e.participants || []).filter(p => balances[p] !== undefined);
@@ -891,18 +926,133 @@ function renderSettlement() {
   `).join('');
 }
 
+/* ---------- Analysis ---------- */
+const CAT_COLORS = { '食': '#d9822b', '住': '#2f6b57', '交通': '#3b6fb0', '團費': '#8a5cb4', '其他': '#9a8f7d' };
+function catColor(c) { return CAT_COLORS[c] || '#b5342a'; }
+
+// 依關鍵字自動分類；順序＝優先度（先命中先決定）。可用 Sheet 的 Category 欄手動覆蓋。
+const CAT_RULES = [
+  { cat: '食', kw: ['uber eats', 'ubereats', 'uber-eats'] },
+  { cat: '交通', kw: ['機票', '航空', '機場', 'uber', '計程車', 'taxi', 'compass', '快線', '接送', '纜車', 'skytrain', '租車', '包車', '車資', '車票', '捷運', '火車'] },
+  { cat: '住', kw: ['住宿', 'bnb', 'airbnb', 'hotel', 'inn', '飯店', '旅館', 'hostel', 'explorer'] },
+  { cat: '團費', kw: ['團', '旅遊', '服務費', '行程', '導遊', 'tour'] },
+  { cat: '食', kw: ['餐', '咖啡', 'coffee', 'cafe', 'café', '超市', '拉麵', 'pizza', '披薩', '冰', 'yogurt', '生蠔', 'oyster', '龍蝦', 'lobster', '燒臘', '麵包', 'bread', 'sushi', '壽司', 'grill', 'bar', 'eatery', '濃湯', 'soup', 'cheese', '炸魚', '薯條', 'fish', 'chips', '堡', 'burger', '雞蛋', '香腸', '採買', '野餐', '宵夜', '甜', 'dessert', '飲', 'tim', 't&t', 'costco', 'safeway', 'independent', 'canadian', 'jam', 'medina', 'saltlik', 'maple leaf', 'pacina', 'masala', 'traders', 'story', 'feast', 'barren', 'ricky', 'pajo', 'timothy', 'fanny', 'kinton', 'tap house', 'saigon', 'triple', '吃', '喝'] },
+  { cat: '其他', kw: ['eta', 'sim', '網路', '簽證', '保險', '門票', '紀念', '小費', '藥'] }
+];
+
+function categoryOf(e) {
+  const manual = String(e.category == null ? '' : e.category).trim();
+  if (manual) return manual;
+  const d = String(e.description == null ? '' : e.description).toLowerCase();
+  for (const rule of CAT_RULES) {
+    if (rule.kw.some(k => d.indexOf(k) !== -1)) return rule.cat;
+  }
+  return '其他';
+}
+
+function computeAnalysis() {
+  const catTotals = {};
+  const dayTotals = {};
+  let total = 0;
+  (state.expenses || []).forEach(e => {
+    const twd = toTWD(e.currency, e.amount, e.date);
+    total += twd;
+    const c = categoryOf(e);
+    catTotals[c] = (catTotals[c] || 0) + twd;
+    const d = e.date || '未指定';
+    dayTotals[d] = (dayTotals[d] || 0) + twd;
+  });
+  return { catTotals, dayTotals, total };
+}
+
+function fmtDayLabel(d) {
+  const p = String(d).split('-');
+  return p.length === 3 ? (+p[1]) + '/' + (+p[2]) : d;
+}
+
+function buildInsights(catTotals, dayTotals, total, cats, days) {
+  const tips = [];
+  if (!total) return tips;
+  const top = cats[0];
+  tips.push(`最大宗是「${top}」，佔 ${Math.round(catTotals[top] / total * 100)}%（${fmt(catTotals[top])}）。`);
+  const daysWithSpend = days.filter(d => d !== '未指定');
+  if (daysWithSpend.length) {
+    let maxDay = daysWithSpend[0];
+    daysWithSpend.forEach(d => { if (dayTotals[d] > dayTotals[maxDay]) maxDay = d; });
+    tips.push(`花最多的一天是 ${fmtDayLabel(maxDay)}，共 ${fmt(dayTotals[maxDay])}。`);
+    tips.push(`有花費的 ${daysWithSpend.length} 天，平均每天約 ${fmt(total / daysWithSpend.length)}。`);
+  }
+  const pct = c => (catTotals[c] || 0) / total * 100;
+  if (pct('交通') >= 25) tips.push('交通佔比偏高，可留意共乘或交通票券（如 Compass 儲值）省一點。');
+  if (pct('食') >= 40) tips.push('餐飲是主要開銷，偶爾用超市採買自煮可有效壓低。');
+  if (pct('團費') >= 30) tips.push('團費佔比高，多屬一次性支出，後續每日花費應會明顯下降。');
+  return tips.slice(0, 4);
+}
+
+function renderAnalysis() {
+  const list = state.expenses || [];
+  if (!list.length) {
+    els.analysisContent.innerHTML = '';
+    els.analysisEmpty.style.display = 'block';
+    return;
+  }
+  els.analysisEmpty.style.display = 'none';
+
+  const { catTotals, dayTotals, total } = computeAnalysis();
+  const cats = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
+  const days = Object.keys(dayTotals).sort();
+  const maxDay = Math.max.apply(null, days.map(d => dayTotals[d]));
+
+  const catRows = cats.map(c => {
+    const amt = catTotals[c];
+    const pct = total ? Math.round(amt / total * 100) : 0;
+    return `<div class="an-row">
+      <div class="an-row-top">
+        <span class="an-name"><span class="an-dot" style="background:${catColor(c)}"></span>${esc(c)}</span>
+        <span class="an-val num">${fmt(amt)} <span class="an-pct">${pct}%</span></span>
+      </div>
+      <div class="an-bar"><span style="width:${total ? amt / total * 100 : 0}%;background:${catColor(c)}"></span></div>
+    </div>`;
+  }).join('');
+
+  const dayRows = days.map(d => {
+    const amt = dayTotals[d];
+    const w = maxDay ? amt / maxDay * 100 : 0;
+    return `<div class="an-row">
+      <div class="an-row-top">
+        <span class="an-name">${esc(fmtDayLabel(d))}</span>
+        <span class="an-val num">${fmt(amt)}</span>
+      </div>
+      <div class="an-bar"><span style="width:${w}%;background:var(--maple)"></span></div>
+    </div>`;
+  }).join('');
+
+  const tips = buildInsights(catTotals, dayTotals, total, cats, days);
+  const tipsHTML = tips.map(t => `<li>${esc(t)}</li>`).join('');
+
+  els.analysisContent.innerHTML = `
+    <div class="hero"><div class="hero-label">旅程總花費 (TWD)</div><div class="hero-num num">${fmt(total)}</div></div>
+    ${tips.length ? `<section><h2 class="an-h">💡 建議</h2><ul class="an-tips">${tipsHTML}</ul></section>` : ''}
+    <section><h2 class="an-h">🧭 分類佔比</h2>${catRows}</section>
+    <section><h2 class="an-h">📅 每日花費</h2>${dayRows}</section>
+  `;
+}
+
 /* ---------- Events ---------- */
 function switchTab(tab) {
-  const exp = tab === 'expenses';
-  els.viewExpenses.style.display = exp ? '' : 'none';
-  els.viewItinerary.style.display = exp ? 'none' : '';
-  els.tabExpenses.classList.toggle('active', exp);
-  els.tabItinerary.classList.toggle('active', !exp);
+  els.viewExpenses.style.display = tab === 'expenses' ? '' : 'none';
+  els.viewItinerary.style.display = tab === 'itinerary' ? '' : 'none';
+  els.viewAnalysis.style.display = tab === 'analysis' ? '' : 'none';
+  els.tabExpenses.classList.toggle('active', tab === 'expenses');
+  els.tabItinerary.classList.toggle('active', tab === 'itinerary');
+  els.tabAnalysis.classList.toggle('active', tab === 'analysis');
   window.scrollTo(0, 0);
-  if (!exp && updateDayNav) updateDayNav();
+  if (tab === 'itinerary' && updateDayNav) updateDayNav();
+  if (tab === 'analysis') renderAnalysis();
 }
 els.tabExpenses.addEventListener('click', () => switchTab('expenses'));
 els.tabItinerary.addEventListener('click', () => switchTab('itinerary'));
+els.tabAnalysis.addEventListener('click', () => switchTab('analysis'));
 
 els.btnCAD.addEventListener('click', () => {
   selectedCurrency = 'CAD';
