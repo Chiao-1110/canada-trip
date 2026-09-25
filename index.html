@@ -240,7 +240,7 @@
   /* ---------- Tabs ---------- */
   .tabs {
     margin-top: -28px;
-    display: grid; grid-template-columns: 1fr 1fr; gap: 5px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px;
     background: var(--surface); border: 1px solid var(--line);
     border-radius: 15px; padding: 5px; box-shadow: var(--shadow);
     position: relative; z-index: 3;
@@ -959,8 +959,11 @@ function computeAnalysis() {
     total += twd;
     const c = categoryOf(e);
     catTotals[c] = (catTotals[c] || 0) + twd;
-    const d = e.date || '未指定';
-    dayTotals[d] = (dayTotals[d] || 0) + twd;
+    // 每日花費用「歸屬日期」(可單日或區間；區間平均攤分)，沒填才用付款日
+    const sd = String(e.spendDate == null ? '' : e.spendDate).trim();
+    const days = sd ? expandSpendDays(sd) : [e.date || '未指定'];
+    const per = twd / days.length;
+    days.forEach(dk => { dayTotals[dk] = (dayTotals[dk] || 0) + per; });
   });
   return { catTotals, dayTotals, total };
 }
@@ -970,23 +973,21 @@ function fmtDayLabel(d) {
   return p.length === 3 ? (+p[1]) + '/' + (+p[2]) : d;
 }
 
-function buildInsights(catTotals, dayTotals, total, cats, days) {
-  const tips = [];
-  if (!total) return tips;
-  const top = cats[0];
-  tips.push(`最大宗是「${top}」，佔 ${Math.round(catTotals[top] / total * 100)}%（${fmt(catTotals[top])}）。`);
-  const daysWithSpend = days.filter(d => d !== '未指定');
-  if (daysWithSpend.length) {
-    let maxDay = daysWithSpend[0];
-    daysWithSpend.forEach(d => { if (dayTotals[d] > dayTotals[maxDay]) maxDay = d; });
-    tips.push(`花最多的一天是 ${fmtDayLabel(maxDay)}，共 ${fmt(dayTotals[maxDay])}。`);
-    tips.push(`有花費的 ${daysWithSpend.length} 天，平均每天約 ${fmt(total / daysWithSpend.length)}。`);
+// 把歸屬日期展開成日期陣列。單日→[該日]；區間 'yyyy-MM-dd~yyyy-MM-dd'→逐日展開(含頭尾)。
+function expandSpendDays(spend) {
+  const s = String(spend == null ? '' : spend).trim();
+  if (!s) return ['未指定'];
+  const parts = s.split('~');
+  if (parts.length < 2) return [parts[0]];
+  const toDate = x => { const p = x.split('-'); return p.length === 3 ? new Date(+p[0], +p[1] - 1, +p[2]) : null; };
+  const pad = n => ('0' + n).slice(-2);
+  const start = toDate(parts[0]), end = toDate(parts[1]);
+  if (!start || !end || isNaN(start) || isNaN(end) || end < start) return [parts[0]];
+  const days = [];
+  for (let d = new Date(start); d <= end && days.length < 120; d.setDate(d.getDate() + 1)) {
+    days.push(d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()));
   }
-  const pct = c => (catTotals[c] || 0) / total * 100;
-  if (pct('交通') >= 25) tips.push('交通佔比偏高，可留意共乘或交通票券（如 Compass 儲值）省一點。');
-  if (pct('食') >= 40) tips.push('餐飲是主要開銷，偶爾用超市採買自煮可有效壓低。');
-  if (pct('團費') >= 30) tips.push('團費佔比高，多屬一次性支出，後續每日花費應會明顯下降。');
-  return tips.slice(0, 4);
+  return days.length ? days : [parts[0]];
 }
 
 function renderAnalysis() {
@@ -1027,12 +1028,8 @@ function renderAnalysis() {
     </div>`;
   }).join('');
 
-  const tips = buildInsights(catTotals, dayTotals, total, cats, days);
-  const tipsHTML = tips.map(t => `<li>${esc(t)}</li>`).join('');
-
   els.analysisContent.innerHTML = `
     <div class="hero"><div class="hero-label">旅程總花費 (TWD)</div><div class="hero-num num">${fmt(total)}</div></div>
-    ${tips.length ? `<section><h2 class="an-h">💡 建議</h2><ul class="an-tips">${tipsHTML}</ul></section>` : ''}
     <section><h2 class="an-h">🧭 分類佔比</h2>${catRows}</section>
     <section><h2 class="an-h">📅 每日花費</h2>${dayRows}</section>
   `;
