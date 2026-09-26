@@ -1017,14 +1017,14 @@ function renderSettlement() {
 }
 
 /* ---------- Analysis ---------- */
-const CAT_COLORS = { '食': '#d9822b', '住': '#2f6b57', '交通': '#3b6fb0', '團費': '#8a5cb4', '其他': '#9a8f7d' };
+const CAT_COLORS = { '食': '#d9822b', '住宿': '#2f6b57', '交通': '#3b6fb0', '團費': '#8a5cb4', '其他': '#9a8f7d' };
 function catColor(c) { return CAT_COLORS[c] || '#b5342a'; }
 
 // 依關鍵字自動分類；順序＝優先度（先命中先決定）。可用 Sheet 的 Category 欄手動覆蓋。
 const CAT_RULES = [
   { cat: '食', kw: ['uber eats', 'ubereats', 'uber-eats'] },
   { cat: '交通', kw: ['機票', '航空', '機場', 'uber', '計程車', 'taxi', 'compass', '快線', '接送', '纜車', 'skytrain', '租車', '包車', '車資', '車票', '捷運', '火車'] },
-  { cat: '住', kw: ['住宿', 'bnb', 'airbnb', 'hotel', 'inn', '飯店', '旅館', 'hostel', 'explorer'] },
+  { cat: '住宿', kw: ['住宿', 'bnb', 'airbnb', 'hotel', 'inn', '飯店', '旅館', 'hostel', 'explorer'] },
   { cat: '團費', kw: ['團', '旅遊', '服務費', '行程', '導遊', 'tour'] },
   { cat: '食', kw: ['餐', '咖啡', 'coffee', 'cafe', 'café', '超市', '拉麵', 'pizza', '披薩', '冰', 'yogurt', '生蠔', 'oyster', '龍蝦', 'lobster', '燒臘', '麵包', 'bread', 'sushi', '壽司', 'grill', 'bar', 'eatery', '濃湯', 'soup', 'cheese', '炸魚', '薯條', 'fish', 'chips', '堡', 'burger', '雞蛋', '香腸', '採買', '野餐', '宵夜', '甜', 'dessert', '飲', 'tim', 't&t', 'costco', 'safeway', 'independent', 'canadian', 'jam', 'medina', 'saltlik', 'maple leaf', 'pacina', 'masala', 'traders', 'story', 'feast', 'barren', 'ricky', 'pajo', 'timothy', 'fanny', 'kinton', 'tap house', 'saigon', 'triple', '吃', '喝'] },
   { cat: '其他', kw: ['eta', 'sim', '網路', '簽證', '保險', '門票', '紀念', '小費', '藥'] }
