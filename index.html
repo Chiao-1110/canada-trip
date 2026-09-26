@@ -184,13 +184,26 @@
   .status { text-align: center; font-size: 13px; color: var(--pine); margin-top: 10px; font-weight: 600; min-height: 18px; }
 
   /* ---------- Expense list ---------- */
+  .exp-day {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin: 18px 0 4px; padding: 6px 12px; border-radius: 9px;
+    background: var(--paper);
+  }
+  .exp-day:first-child { margin-top: 2px; }
+  .exp-day-label { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .exp-day-sum { font-size: 12.5px; font-weight: 700; color: var(--muted); }
+  .exp-day-sum::before { content: '小計 '; font-weight: 500; }
   .exp {
     display: flex; align-items: flex-start; gap: 12px;
-    padding: 14px 0; border-bottom: 1px solid var(--line);
+    padding: 13px 12px; border-bottom: 1px solid var(--line);
   }
   .exp:last-child { border-bottom: none; }
   .exp-body { flex: 1; min-width: 0; }
   .exp-desc { font-weight: 600; font-size: 15px; }
+  .cat-chip {
+    display: inline-block; font-size: 11px; font-weight: 700; line-height: 1.5;
+    padding: 0 7px; border-radius: 6px; margin-right: 7px; vertical-align: 1px;
+  }
   .exp-meta { font-size: 12.5px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
   .exp-meta .who { color: var(--maple); font-weight: 500; }
   .exp-right { text-align: right; white-space: nowrap; }
@@ -368,6 +381,27 @@
   .an-bar > span { display: block; height: 100%; border-radius: 999px; min-width: 2px; }
   .an-tips { margin: 0; padding-left: 20px; }
   .an-tips li { font-size: 13.5px; line-height: 1.65; color: var(--ink); padding: 2px 0; }
+  .an-hint { font-size: 11.5px; font-weight: 500; color: var(--muted); }
+  .an-cat { margin-bottom: 12px; }
+  .an-cat:last-child { margin-bottom: 0; }
+  .an-catbtn {
+    display: block; width: 100%; text-align: left; padding: 0; cursor: pointer;
+    background: none; border: none; font-family: inherit; -webkit-appearance: none;
+  }
+  .an-caret { font-size: 10px; color: var(--muted); margin-left: 6px; }
+  .an-detail {
+    margin: 8px 0 2px; padding: 4px 11px; background: var(--paper); border-radius: 10px;
+  }
+  .an-detail[hidden] { display: none; }
+  .an-ditem {
+    display: flex; align-items: baseline; gap: 10px; font-size: 12.5px;
+    padding: 7px 0; border-bottom: 1px solid var(--line);
+  }
+  .an-ditem:last-child { border-bottom: none; }
+  .an-ditem .d-date { flex: none; width: 42px; color: var(--muted); }
+  .an-ditem .d-desc { flex: 1; min-width: 0; color: var(--ink); overflow-wrap: anywhere; }
+  .an-ditem .d-amt { flex: none; white-space: nowrap; color: var(--ink); font-weight: 600; }
+  .an-dempty { color: var(--muted); justify-content: center; }
 
   /* ---------- Alerts ---------- */
   .notice {
@@ -481,6 +515,8 @@
 /* ============ 設定區：部署好 Apps Script 後，把網址貼在這裡 ============ */
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwWg04hH0OurGHXFHv4FoiIlqIj14GQ6ZFQBmRHVOVsfI17IvfSCQig7etp_cr4tKxecg/exec";
 const CAD_TO_TWD = 22.43; // 預設匯率：找不到當日匯率時使用
+const TRIP_START = '2026-09-10'; // 旅程第一天（Day 1）
+const TRIP_END = '2026-09-23';   // 旅程最後一天；此區間以外的日期＝行前預付
 /* ===================================================================== */
 
 let state = { people: [], expenses: [], itinerary: [], rates: {} };
@@ -818,21 +854,36 @@ function renderParticipantCheckboxes() {
   `).join('');
 }
 
-function renderExpenseTable() {
-  if (!state.expenses.length) {
-    els.expenseRows.innerHTML = '';
-    els.expenseEmpty.style.display = 'block';
-    return;
-  }
-  els.expenseEmpty.style.display = 'none';
-  els.expenseRows.innerHTML = state.expenses.map(e => {
-    const twd = toTWD(e.currency, e.amount, e.date);
-    const dateShort = (e.date || '').slice(5).replace('-', '/');
-    const rateNote = e.currency === 'CAD' ? ` @${rateFor(e.date)}` : '';
-    return `<div class="exp">
+// 分組用的鍵：旅程區間內用日期本身；區間外統一「行前預付」；沒日期「未指定」
+function expGroupKey(date) {
+  const d = String(date == null ? '' : date).trim();
+  if (!d) return '未指定';
+  return (d >= TRIP_START && d <= TRIP_END) ? d : '行前預付';
+}
+
+function expDayLabel(key) {
+  if (key === '行前預付') return '🧳 行前預付';
+  if (key === '未指定') return '未指定日期';
+  const p = String(key).split('-');
+  if (p.length !== 3) return key;
+  const d = new Date(+p[0], +p[1] - 1, +p[2]);
+  if (isNaN(d)) return key;
+  const wd = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()];
+  return `${+p[1]}/${+p[2]} 週${wd}`;
+}
+
+function expRowHTML(e) {
+  const twd = toTWD(e.currency, e.amount, e.date);
+  const cat = categoryOf(e);
+  const col = catColor(cat);
+  const rateNote = e.currency === 'CAD' ? ` @${rateFor(e.date)}` : '';
+  const parts = e.participants || [];
+  const shareTxt = (state.people.length && parts.length === state.people.length)
+    ? '全員分攤' : ('分攤：' + parts.map(esc).join('、'));
+  return `<div class="exp">
       <div class="exp-body">
-        <div class="exp-desc">${esc(e.description)}</div>
-        <div class="exp-meta">${dateShort} · <span class="who">${esc(e.payer)}</span> 付 · 分攤：${(e.participants || []).map(esc).join('、')}</div>
+        <div class="exp-desc"><span class="cat-chip" style="background:${col}1f;color:${col}">${esc(cat)}</span>${esc(e.description)}</div>
+        <div class="exp-meta"><span class="who">${esc(e.payer)}</span> 付 · ${shareTxt}</div>
       </div>
       <div class="exp-right">
         <div class="exp-twd num">${fmt(twd)}</div>
@@ -840,6 +891,45 @@ function renderExpenseTable() {
       </div>
       <button class="exp-del" title="刪除" onclick="handleDelete('${esc(e.id)}')">×</button>
     </div>`;
+}
+
+function renderExpenseTable() {
+  if (!state.expenses.length) {
+    els.expenseRows.innerHTML = '';
+    els.expenseEmpty.style.display = 'block';
+    return;
+  }
+  els.expenseEmpty.style.display = 'none';
+
+  // 依付款日期排序（早→晚，與行程／每日花費一致）；沒日期的排最後，同日維持輸入順序
+  const sorted = state.expenses.map((e, i) => ({ e, i })).sort((a, b) => {
+    const da = a.e.date || '', db = b.e.date || '';
+    if (da === db) return a.i - b.i;
+    if (!da) return 1;
+    if (!db) return -1;
+    return da < db ? -1 : 1;
+  }).map(x => x.e);
+
+  // 依分組鍵歸類（旅程內＝各日期；區間外＝行前預付；無日期＝未指定）
+  const map = new Map();
+  sorted.forEach(e => {
+    const key = expGroupKey(e.date);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(e);
+  });
+
+  // 群組順序：行前預付置頂 → 旅程各日（早到晚）→ 未指定殿後
+  const dateKeys = [...map.keys()].filter(k => k !== '行前預付' && k !== '未指定').sort();
+  const ordered = [];
+  if (map.has('行前預付')) ordered.push('行前預付');
+  ordered.push(...dateKeys);
+  if (map.has('未指定')) ordered.push('未指定');
+
+  els.expenseRows.innerHTML = ordered.map(key => {
+    const items = map.get(key);
+    const sub = items.reduce((s, e) => s + toTWD(e.currency, e.amount, e.date), 0);
+    const head = `<div class="exp-day"><span class="exp-day-label">${esc(expDayLabel(key))}</span><span class="exp-day-sum num">${fmt(sub)}</span></div>`;
+    return head + items.map(expRowHTML).join('');
   }).join('');
 }
 
@@ -952,6 +1042,7 @@ function categoryOf(e) {
 
 function computeAnalysis() {
   const catTotals = {};
+  const catItems = {};
   const dayTotals = {};
   let total = 0;
   (state.expenses || []).forEach(e => {
@@ -959,18 +1050,37 @@ function computeAnalysis() {
     total += twd;
     const c = categoryOf(e);
     catTotals[c] = (catTotals[c] || 0) + twd;
+    (catItems[c] = catItems[c] || []).push(e);
     // 每日花費用「歸屬日期」(可單日或區間；區間平均攤分)，沒填才用付款日
     const sd = String(e.spendDate == null ? '' : e.spendDate).trim();
     const days = sd ? expandSpendDays(sd) : [e.date || '未指定'];
     const per = twd / days.length;
     days.forEach(dk => { dayTotals[dk] = (dayTotals[dk] || 0) + per; });
   });
-  return { catTotals, dayTotals, total };
+  return { catTotals, catItems, dayTotals, total };
 }
 
 function fmtDayLabel(d) {
   const p = String(d).split('-');
   return p.length === 3 ? (+p[1]) + '/' + (+p[2]) : d;
+}
+
+// 旅程第幾天：以 TRIP_START 為 Day 1。區間外或非日期回傳 null。
+function tripDayNum(dateKey) {
+  const p = String(dateKey).split('-');
+  if (p.length !== 3) return null;
+  const d = new Date(+p[0], +p[1] - 1, +p[2]);
+  const sp = TRIP_START.split('-');
+  const s = new Date(+sp[0], +sp[1] - 1, +sp[2]);
+  if (isNaN(d)) return null;
+  const n = Math.round((d - s) / 86400000) + 1;
+  return n >= 1 ? n : null;
+}
+
+// 每日花費的標籤：旅程內加上「Day N · 」前綴
+function analysisDayLabel(dateKey) {
+  const n = tripDayNum(dateKey);
+  return (n ? `Day ${n} · ` : '') + fmtDayLabel(dateKey);
 }
 
 // 把歸屬日期展開成日期陣列。單日→[該日]；區間 'yyyy-MM-dd~yyyy-MM-dd'→逐日展開(含頭尾)。
@@ -999,20 +1109,35 @@ function renderAnalysis() {
   }
   els.analysisEmpty.style.display = 'none';
 
-  const { catTotals, dayTotals, total } = computeAnalysis();
-  const cats = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
+  const { catTotals, catItems, dayTotals, total } = computeAnalysis();
+  // 固定顯示 5 個標準類別（即使為 0），再加上任何自訂類別；依金額由多到少排序
+  const cats = [...new Set([...Object.keys(CAT_COLORS), ...Object.keys(catTotals)])]
+    .sort((a, b) => (catTotals[b] || 0) - (catTotals[a] || 0));
   const days = Object.keys(dayTotals).sort();
   const maxDay = Math.max.apply(null, days.map(d => dayTotals[d]));
 
   const catRows = cats.map(c => {
-    const amt = catTotals[c];
+    const amt = catTotals[c] || 0;
     const pct = total ? Math.round(amt / total * 100) : 0;
-    return `<div class="an-row">
-      <div class="an-row-top">
-        <span class="an-name"><span class="an-dot" style="background:${catColor(c)}"></span>${esc(c)}</span>
-        <span class="an-val num">${fmt(amt)} <span class="an-pct">${pct}%</span></span>
-      </div>
-      <div class="an-bar"><span style="width:${total ? amt / total * 100 : 0}%;background:${catColor(c)}"></span></div>
+    const col = catColor(c);
+    const items = (catItems[c] || []).slice().sort((a, b) => {
+      const da = a.date || '', db = b.date || '';
+      return da < db ? -1 : (da > db ? 1 : 0);
+    });
+    const detail = items.length ? items.map(e => `<div class="an-ditem">
+        <span class="d-date">${esc(fmtDayLabel(e.date))}</span>
+        <span class="d-desc">${esc(e.description)}</span>
+        <span class="d-amt num">${esc(e.currency)} ${Number(e.amount).toLocaleString('zh-TW')}</span>
+      </div>`).join('') : '<div class="an-ditem an-dempty">尚無此類別花費</div>';
+    return `<div class="an-cat">
+      <button type="button" class="an-catbtn" aria-expanded="false">
+        <div class="an-row-top">
+          <span class="an-name"><span class="an-dot" style="background:${col}"></span>${esc(c)}<span class="an-caret">▸</span></span>
+          <span class="an-val num">${fmt(amt)} <span class="an-pct">${pct}%</span></span>
+        </div>
+        <div class="an-bar"><span style="width:${total ? amt / total * 100 : 0}%;background:${col}"></span></div>
+      </button>
+      <div class="an-detail" hidden>${detail}</div>
     </div>`;
   }).join('');
 
@@ -1021,7 +1146,7 @@ function renderAnalysis() {
     const w = maxDay ? amt / maxDay * 100 : 0;
     return `<div class="an-row">
       <div class="an-row-top">
-        <span class="an-name">${esc(fmtDayLabel(d))}</span>
+        <span class="an-name">${esc(analysisDayLabel(d))}</span>
         <span class="an-val num">${fmt(amt)}</span>
       </div>
       <div class="an-bar"><span style="width:${w}%;background:var(--maple)"></span></div>
@@ -1029,10 +1154,19 @@ function renderAnalysis() {
   }).join('');
 
   els.analysisContent.innerHTML = `
-    <div class="hero"><div class="hero-label">旅程總花費 (TWD)</div><div class="hero-num num">${fmt(total)}</div></div>
-    <section><h2 class="an-h">🧭 分類佔比</h2>${catRows}</section>
+    <section><h2 class="an-h">🧭 分類佔比 <span class="an-hint">（點類別看明細）</span></h2>${catRows}</section>
     <section><h2 class="an-h">📅 每日花費</h2>${dayRows}</section>
   `;
+
+  els.analysisContent.querySelectorAll('.an-catbtn').forEach(btn => {
+    btn.onclick = () => {
+      const detail = btn.nextElementSibling;
+      const open = detail.hasAttribute('hidden');
+      if (open) detail.removeAttribute('hidden'); else detail.setAttribute('hidden', '');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.querySelector('.an-caret').textContent = open ? '▾' : '▸';
+    };
+  });
 }
 
 /* ---------- Events ---------- */
